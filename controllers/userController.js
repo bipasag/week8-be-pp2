@@ -12,15 +12,44 @@ const generateToken = (_id) => {
 // @route   POST /api/users/signup
 // @access  Public
 const signupUser = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, phone_number, gender, date_of_birth, membership_status } = req.body;
 
   try {
-    const user = await User.signup(name, email, password);
+    // Basic validations
+    if (!/^\d{10,}$/.test(phone_number)) {
+      return res.status(400).json({ error: "Phone number must be at least 10 digits" });
+    }
 
-    // create a token
+    if (!["Male", "Female", "Other"].includes(gender)) {
+      return res.status(400).json({ error: "Invalid gender value" });
+    }
+
+    if (!["Active", "Inactive", "Suspended"].includes(membership_status)) {
+      return res.status(400).json({ error: "Invalid membership status" });
+    }
+
+    if (!date_of_birth) {
+      return res.status(400).json({ error: "Date of birth is required" });
+    }
+
+    // Call custom signup method in User model
+    const user = await User.signup(name, email, password, phone_number, gender, date_of_birth, membership_status);
+
+    // Create a token
     const token = generateToken(user._id);
 
-    res.status(201).json({ email, token });
+    res.status(201).json({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone_number: user.phone_number,
+        gender: user.gender,
+        date_of_birth: user.date_of_birth,
+        membership_status: user.membership_status,
+      },
+      token,
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -31,16 +60,28 @@ const signupUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
+
   try {
     const user = await User.login(email, password);
 
     if (user) {
-      // create a token
+      // Create a token
       const token = generateToken(user._id);
-      res.status(200).json({ email, token });
+
+      res.status(200).json({
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          phone_number: user.phone_number,
+          gender: user.gender,
+          date_of_birth: user.date_of_birth,
+          membership_status: user.membership_status,
+        },
+        token,
+      });
     } else {
-      res.status(400);
-      throw new Error("Invalid credentials");
+      res.status(400).json({ error: "Invalid credentials" });
     }
   } catch (error) {
     res.status(400).json({ error: error.message });

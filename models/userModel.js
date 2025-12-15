@@ -4,40 +4,64 @@ const validator = require("validator");
 
 const userSchema = mongoose.Schema(
   {
-    name: {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    phone_number: {
       type: String,
-      required: [true, "Please add a name"],
+      required: true,
+      match: /^\d{10,}$/, // Must be at least 10 digits
     },
-    email: {
+    gender: {
       type: String,
-      required: [true, "Please add an email"],
-      unique: true,
+      required: true,
+      enum: ["Male", "Female", "Other"],
     },
-    password: {
+    date_of_birth: { type: Date, required: true },
+    membership_status: {
       type: String,
-      required: [true, "Please add a password"],
+      required: true,
+      enum: ["Active", "Inactive", "Suspended"],
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-// static signup method
-userSchema.statics.signup = async function (name, email, password) {
-  // validation
-  if ((!name, !email || !password)) {
+// ✅ Define static methods AFTER userSchema is declared
+userSchema.statics.signup = async function (
+  name,
+  email,
+  password,
+  phone_number,
+  gender,
+  date_of_birth,
+  membership_status
+) {
+  if (!name || !email || !password || !phone_number || !gender || !date_of_birth || !membership_status) {
     throw Error("Please add all fields");
   }
+
   if (!validator.isEmail(email)) {
     throw Error("Email not valid");
   }
+
   if (!validator.isStrongPassword(password)) {
     throw Error("Password not strong enough");
   }
 
-  const userExists = await this.findOne({ email });
+  if (!/^\d{10,}$/.test(phone_number)) {
+    throw Error("Phone number must be at least 10 digits");
+  }
 
+  if (!["Male", "Female", "Other"].includes(gender)) {
+    throw Error("Invalid gender value");
+  }
+
+  if (!["Active", "Inactive", "Suspended"].includes(membership_status)) {
+    throw Error("Invalid membership status");
+  }
+
+  const userExists = await this.findOne({ email });
   if (userExists) {
     throw new Error("User already exists");
   }
@@ -49,12 +73,15 @@ userSchema.statics.signup = async function (name, email, password) {
     name,
     email,
     password: hashedPassword,
+    phone_number,
+    gender,
+    date_of_birth,
+    membership_status,
   });
 
   return user;
 };
 
-// static login method
 userSchema.statics.login = async function (email, password) {
   if (!email || !password) {
     throw Error("All fields must be filled");
