@@ -12,28 +12,40 @@ const generateToken = (_id) => {
 // @route   POST /api/users/signup
 // @access  Public
 const signupUser = async (req, res) => {
-  const { name, email, password, phone_number, gender, date_of_birth, membership_status } = req.body;
+  const {
+    name,
+    email,
+    password,
+    phone_number,
+    gender,
+    date_of_birth,
+    membership_status
+  } = req.body;
 
   try {
-    // Basic validations
-    if (!/^\d{10,}$/.test(phone_number)) {
+    // Optional validations
+    if (phone_number && !/^\d{10,}$/.test(phone_number)) {
       return res.status(400).json({ error: "Phone number must be at least 10 digits" });
     }
 
-    if (!["Male", "Female", "Other"].includes(gender)) {
+    if (gender && !["Male", "Female", "Other"].includes(gender)) {
       return res.status(400).json({ error: "Invalid gender value" });
     }
 
-    if (!["Active", "Inactive", "Suspended"].includes(membership_status)) {
+    if (membership_status && !["Active", "Inactive", "Suspended"].includes(membership_status)) {
       return res.status(400).json({ error: "Invalid membership status" });
     }
 
-    if (!date_of_birth) {
-      return res.status(400).json({ error: "Date of birth is required" });
-    }
-
-    // Call custom signup method in User model
-    const user = await User.signup(name, email, password, phone_number, gender, date_of_birth, membership_status);
+    // Call signup method with defaults for missing fields
+    const user = await User.signup(
+      name,
+      email,
+      password,
+      phone_number || null,
+      gender || null,
+      date_of_birth || null,
+      membership_status || "Active"
+    );
 
     // Create a token
     const token = generateToken(user._id);
@@ -65,7 +77,6 @@ const loginUser = async (req, res) => {
     const user = await User.login(email, password);
 
     if (user) {
-      // Create a token
       const token = generateToken(user._id);
 
       res.status(200).json({
@@ -88,7 +99,7 @@ const loginUser = async (req, res) => {
   }
 };
 
-// @desc    Get user data
+// @desc    Get authenticated user data
 // @route   GET /api/users/me
 // @access  Private
 const getMe = async (req, res) => {
